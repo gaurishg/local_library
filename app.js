@@ -5,6 +5,13 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var favicon = require('serve-favicon');
 
+//Set up mongoose connection
+var mongoose = require('mongoose');
+var mongoDB = 'mongodb://localhost:27017/local_library';
+mongoose.Promise = global.Promise;
+var db = mongoose.connection
+db.on('error', console.error.bind(console, 'MongoDB connnection error:'));
+
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 
