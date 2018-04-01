@@ -1,17 +1,100 @@
 var Book = require('../models/book');
+var Author = require('../models/author');
+var Genre = require('../models/genre');
+var BookInstance = require('../models/bookinstance');
 
-exports.index = function(req, res) {
-    res.send('NOT IMPLEMENTED: Site Home Page');
+var async = require('async');
+
+exports.index = function(req, res, next) {
+    //console.log("Book controller index called");   
+    
+    async.parallel({
+        book_count: function(callback) {
+            //console.log("Book controller book_count called");
+            Book.count({}, callback); // Pass an empty object as match condition to find all documents of this collection
+            // Book.count({}, function(err, count){
+            //     console.log("before book count callback");
+            //     callback(err, count);
+            //     console.log("after book count callback");
+            // });
+//console.log("Book controller book_count ended");
+        },
+        book_instance_count: function(callback) {
+            //console.log("Book controller book_instance_count called");
+            BookInstance.count({}, callback);
+            // BookInstance.count({}, function(err, count){
+            //     callback(err, count);
+            // });
+            //console.log("Book controller book_instance_count ended");
+        },
+        book_instance_available_count: function(callback) {
+            //console.log("Available books count called");
+            BookInstance.count({status:'Available'}, callback);
+            // BookInstance.count({status:'Available'}, function(err, count){
+            //     callback(err, count);
+            // });
+            //console.log("Available books count ended.");
+        },
+        author_count: function(callback) {
+            //console.log("Author count called.");
+            Author.count({}, callback);
+            // Author.count({}, function(err, count){
+            //     callback(err, count);
+            // });
+            //console.log("Author count ended.");
+        },
+        genre_count: function(callback) {
+            //console.log("Genre count called.");
+            Genre.count({}, callback);
+            // Genre.count({}, function(err, count){
+            //     callback(err, count);
+            // });
+            // console.log("Genre count ended.");
+        },
+    }, function(err, results) {
+        //console.log("Book controller render called");
+        res.render('index', { title: 'Local Library Home', error: err, data: results });
+    });
 };
 
 // Display list of all books.
-exports.book_list = function(req, res) {
-    res.send('NOT IMPLEMENTED: Book list');
+exports.book_list = function(req, res, next) {
+    ///res.send('NOT IMPLEMENTED: Book list');
+    Book.find({}, 'title author')
+    .populate('author').exec(function(err, list_books){
+        if(err) {return next(err);}
+        //Successful, so render
+        res.render('book_list', {title: 'Book List', book_list: list_books});
+    })
 };
 
 // Display detail page for a specific book.
-exports.book_detail = function(req, res) {
-    res.send('NOT IMPLEMENTED: Book detail: ' + req.params.id);
+exports.book_detail = function(req, res, next) {
+
+    async.parallel({
+        book: function(callback) {
+
+            Book.findById(req.params.id)
+              .populate('author')
+              .populate('genre')
+              .exec(callback);
+        },
+        book_instance: function(callback) {
+
+          BookInstance.find({ 'book': req.params.id })
+          .exec(callback);
+        },
+    }, function(err, results) {
+        if (err) { return next(err); }
+        if (results.book==null) { // No results.
+            var err = new Error('Book not found');
+            err.status = 404;
+            return next(err);
+        }
+        // Successful, so render.
+        res.render('book_detail', { title: 'Title', book:  results.book, book_instances: results.book_instance } );
+    });
+
 };
 
 // Display book create form on GET.
